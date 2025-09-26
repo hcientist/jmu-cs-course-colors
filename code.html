@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JMU CS Colors - Semester Code</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+  <link rel="icon" href="https://fav.farm/🎨">
+</head>
+
+<body><h1>CS Courses as hex colors</h1>
+<p>This version encodes the semester following some internal JMU standard whose documentation
+  I cannot find where the semester is represented as a 4-digit integer in base 10 with:
+</p>
+<ol>
+  <li>
+    the current millennium is <code>0</code> for <code>1900</code> and <code>1</code> for <code>2000</code>
+  </li>
+  <li>the semester's year's last 2 digits are the middle two digits</li>
+  <li>the last digit is the 1-based index of that semester's starting month, e.g. Fall semester starts in august which
+    is month 8</li>
+</ol>
+<p>
+  For example, Fall 2025 semester is <code>1258</code>:
+</p>
+<dl>
+  <dt>
+    1
+  </dt>
+  <dd>Fall 2025 is not in the 1900s, but in the 2000s</dd>
+  <dt>
+    25
+  </dt>
+  <dd>semester's year's last 2 digits</dd>
+  <dt>
+    8
+  </dt>
+  <dd>Fall 2025 starts in August, month 8</dd>
+</dl>
+<h2>Caveat</h2>
+<p>The only issue is that course code has too many digits, so we drop the leading digit representing the millennium
+  (<code>Fall 2025</code> is then <code>258</code>).</p>
+  <main class="table-responsive">
+    <table class="table" id="colors">
+      <thead>
+        <tr id="courses"><th scope="col">sem</th></tr>
+      </thead>
+      <tbody>
+
+      </tbody>
+    </table>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
+    crossorigin="anonymous"></script>
+  <script type="module">
+    import { wcagResults } from './wcag-contrast.js'
+    const courses = [
+      "101", "149", "159", "227", "240", "261", "280", "327", "330", "332", "343", "345", "347", "349", "354", "361", "374", "412", "430", "432", "442", "444", "445", "446", "447", "448", "449", "450", "452", "455", "456", "457", "458", "462", "470", "480", "482", "488", "497", "499",
+    ]
+
+
+    const courseHeaders = courses.map(c => `<th scope="col" id="${c}">${c}</td>`)
+    document.getElementById('courses').innerHTML += courseHeaders.join("")
+
+    const semesterSuffixes = ['1', '8']
+
+    const courseColors = []
+    const tbody = document.querySelector('tbody')
+    for (let year = 17; year < 50; year++) {
+      semesterSuffixes.forEach(suffix => {
+        const yearRow = document.createElement('tr')
+        yearRow.innerHTML = `<th scope="row">${year}${suffix}</th>`
+        courseColors.push(...courses.map(c => {
+          const color = `${c}${year}${suffix}`
+          const cell = document.createElement('td')
+          const contrast = wcagResults('000000', color);
+          let foreground = ''
+          console.log(`wcagResults('000000', ${color})`, contrast, contrast.passes.AAA_normal)
+          if (!contrast.passes.AA_normal) {
+            foreground = 'color: #ffffff;'
+          }
+          cell.style = `background-color:#${color};${foreground}`
+          cell.textContent = color;
+          yearRow.appendChild(cell)
+          return color
+        }))
+        tbody.appendChild(yearRow)
+      })
+    }
+    console.log(courseColors)
+  </script>
+</body>
+
+</html>

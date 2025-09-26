@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <title>Hex Color Contrast Checker</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, 16px;
+      padding: 24px;
+      background: #f6f7f9;
+      color: #111;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 18px;
+      box-shadow: 0 6px 20px rgba(20, 20, 30, 0.06);
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+
+    input[type="text"] {
+      width: 160px;
+      padding: 8px;
+      margin-right: 8px;
+      border-radius: 8px;
+      border: 1px solid #d7d9de;
+    }
+
+    .swatch {
+      display: inline-block;
+      width: 120px;
+      height: 60px;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+      vertical-align: middle;
+      margin-right: 12px;
+    }
+
+    .results {
+      margin-top: 16px;
+    }
+
+    .pass {
+      color: #0b6;
+      font-weight: 700;
+    }
+
+    .fail {
+      color: #d00;
+      font-weight: 700;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .muted {
+      color: #5b616a;
+      font-size: 13px;
+    }
+
+    .badge {
+      background: #eef3ff;
+      padding: 6px 8px;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card" role="region" aria-label="Color contrast checker">
+    <h2>Hex Color Contrast Checker</h2>
+    <p class="muted">Enter two hex colors and see the WCAG contrast ratio and pass/fail status for AA/AAA.</p>
+
+    <div class="row" style="margin-top:12px;">
+      <div>
+        <label for="fg">Foreground (text) hex</label>
+        <input id="fg" type="text" value="#1a73e8" aria-label="Foreground color hex" />
+      </div>
+
+      <div>
+        <label for="bg">Background hex</label>
+        <input id="bg" type="text" value="#ffffff" aria-label="Background color hex" />
+      </div>
+
+      <div>
+        <label>&nbsp;</label>
+        <button id="swap">Swap</button>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:12px; align-items:center;">
+      <div id="swatchFg" class="swatch" title="Foreground preview"></div>
+      <div id="swatchBg" class="swatch" style="border:1px dashed #ccc" title="Background preview"></div>
+
+      <div>
+        <div class="badge" id="ratioBadge">Ratio: —</div>
+        <div class="muted" style="margin-top:6px;" id="lumInfo">Luminance: — / —</div>
+      </div>
+    </div>
+
+    <div class="results" id="results" aria-live="polite">
+      <!-- results populated by JS -->
+    </div>
+
+    <hr style="margin-top:18px" />
+    <div class="muted">Examples: <code>#000</code>, <code>fff</code>, <code>#f4a261</code>, <code>1a2b3c</code></div>
+  </div>
+
+  <script>
+    /*
+      Color contrast helper functions (WCAG 2.0)
+      - Accepts 3-digit or 6-digit hex, with or without leading '#'
+      - Returns contrast ratio (number >= 1) and pass/fail for WCAG thresholds
+    */
+
+    // Normalize hex string: remove #, expand 3-digit to 6-digit, validate
+    function normalizeHex(hex) {
+      if (typeof hex !== 'string') return null;
+      hex = hex.trim().replace(/^#/, '');
+      if (!/^[0-9a-fA-F]{3}$|^[0-9a-fA-F]{6}$/.test(hex)) return null;
+      if (hex.length === 3) {
+        hex = hex.split('').map(c => c + c).join('');
+      }
+      return hex.toLowerCase();
+    }
+
+    // Convert normalized 6-digit hex to [r,g,b] each 0..255
+    function hexToRgb(hex) {
+      const n = normalizeHex(hex);
+      if (!n) return null;
+      const r = parseInt(n.slice(0, 2), 16);
+      const g = parseInt(n.slice(2, 4), 16);
+      const b = parseInt(n.slice(4, 6), 16);
+      return [r, g, b];
+    }
+
+    // Convert 0..255 channel to sRGB 0..1, then to linearized channel value per WCAG
+    function srgbChannelToLinear(c255) {
+      const c = c255 / 255;
+      // step-by-step exact branching to avoid tiny mistakes:
+      if (c <= 0.03928) {
+        return c / 12.92;
+      } else {
+        return Math.pow((c + 0.055) / 1.055, 2.4);
+      }
+    }
+
+    // Relative luminance from [r,g,b] 0..255
+    function relativeLuminance(rgb) {
+      if (!rgb) return null;
+      const [r, g, b] = rgb;
+      const R = srgbChannelToLinear(r);
+      const G = srgbChannelToLinear(g);
+      const B = srgbChannelToLinear(b);
+      // coefficients are standardized: 0.2126, 0.7152, 0.0722
+      return 0.2126 * R + 0.7152 * G + 0.0722 * B;
+    }
+
+    // Contrast ratio L1/L2 where L1 >= L2
+    function contrastRatio(hexA, hexB) {
+      const rgbA = hexToRgb(hexA);
+      const rgbB = hexToRgb(hexB);
+      if (!rgbA || !rgbB) return null;
+      const lumA = relativeLuminance(rgbA);
+      const lumB = relativeLuminance(rgbB);
+      const L1 = Math.max(lumA, lumB);
+      const L2 = Math.min(lumA, lumB);
+      const ratio = (L1 + 0.05) / (L2 + 0.05);
+      return {
+        ratio: Number(ratio.toFixed(2)),
+        lumA: Number(lumA.toFixed(4)),
+        lumB: Number(lumB.toFixed(4)),
+        lighterIs: (lumA >= lumB) ? 'foreground' : 'background'
+      };
+    }
+
+    // WCAG pass checks
+    function wcagResults(hexFg, hexBg) {
+      const c = contrastRatio(hexFg, hexBg);
+      if (!c) return null;
+      const r = c.ratio;
+      return {
+        ratio: r,
+        passes: {
+          AA_normal: r > 4.5,
+          AA_large: r >= 3.0,
+          AAA_normal: r >= 7.0,
+          AAA_large: r > 4.5
+        },
+        lum: { fg: c.lumA, bg: c.lumB, lighterIs: c.lighterIs }
+      };
+    }
+
+    /* ---------- UI wiring ---------- */
+    const fgInput = document.getElementById('fg');
+    const bgInput = document.getElementById('bg');
+    const swapBtn = document.getElementById('swap');
+    const swatchFg = document.getElementById('swatchFg');
+    const swatchBg = document.getElementById('swatchBg');
+    const ratioBadge = document.getElementById('ratioBadge');
+    const lumInfo = document.getElementById('lumInfo');
+    const resultsBox = document.getElementById('results');
+
+    function render() {
+      const fg = fgInput.value;
+      const bg = bgInput.value;
+      const nfg = normalizeHex(fg);
+      const nbg = normalizeHex(bg);
+
+      // update swatches (even if invalid show blank)
+      swatchFg.style.background = nfg ? '#' + nfg : 'transparent';
+      swatchBg.style.background = nbg ? '#' + nbg : 'transparent';
+
+      if (!nfg || !nbg) {
+        ratioBadge.textContent = 'Ratio: invalid hex';
+        lumInfo.textContent = 'Luminance: — / —';
+        resultsBox.innerHTML = `<div class="muted">Please enter valid hex colors (e.g. #fff or #1a2b3c).</div>`;
+        return;
+      }
+
+      const c = contrastRatio(nfg, nbg);
+      if (!c) {
+        ratioBadge.textContent = 'Ratio: —';
+        resultsBox.innerHTML = `<div class="muted">Calculation error.</div>`;
+        return;
+      }
+
+      ratioBadge.textContent = 'Ratio: ' + c.ratio;
+      lumInfo.textContent = `Luminance: fg ${c.lumA} — bg ${c.lumB} (lighter: ${c.lighterIs})`;
+
+      const wc = wcagResults(nfg, nbg);
+
+      // Build results HTML
+      const lines = [];
+      function line(label, ok) {
+        return `<div>${label}: <span class="${ok ? 'pass' : 'fail'}">${ok ? 'pass' : 'fail'}</span></div>`;
+      }
+      lines.push(line('WCAG AA (normal text ≥ 4.5:1)', wc.passes.AA_normal));
+      lines.push(line('WCAG AA (large text ≥ 3.0:1)', wc.passes.AA_large));
+      lines.push(line('WCAG AAA (normal text ≥ 7.0:1)', wc.passes.AAA_normal));
+      lines.push(line('WCAG AAA (large text ≥ 4.5:1)', wc.passes.AAA_large));
+
+      // Suggest alternative if failing AA normal
+      let suggestion = '';
+      if (!wc.passes.AA_normal) {
+        // naive suggestion: if foreground is lighter, try darker; else try lighter
+        const fgRgb = hexToRgb(nfg);
+        const bgRgb = hexToRgb(nbg);
+        const fgL = relativeLuminance(fgRgb);
+        const bgL = relativeLuminance(bgRgb);
+        // choose a direction to adjust fg by shifting toward black or white by 30% and test
+        function shiftTowards(hex, towardWhite = true, amount = 0.3) {
+          const rgb = hexToRgb(hex);
+          return rgb.map(c => {
+            const target = towardWhite ? 255 : 0;
+            return Math.round(c + (target - c) * amount);
+          });
+        }
+        const try1Rgb = shiftTowards(nfg, fgL < bgL); // if fg is darker, shift toward white; else toward black
+        const try1Hex = try1Rgb.map(x => x.toString(16).padStart(2, '0')).join('');
+        const try1Ratio = contrastRatio('#' + try1Hex, '#' + nbg)?.ratio ?? 0;
+        if (try1Ratio > wc.ratio) {
+          suggestion = `<div style="margin-top:10px;"><strong>Suggestion:</strong> Try <code>#${try1Hex}</code> — new ratio ${try1Ratio}</div>`;
+        }
+      }
+
+      resultsBox.innerHTML = `<div>${lines.join('')}</div>${suggestion}`;
+    }
+
+    // live update
+    fgInput.addEventListener('input', render);
+    bgInput.addEventListener('input', render);
+    swapBtn.addEventListener('click', () => {
+      const a = fgInput.value;
+      fgInput.value = bgInput.value;
+      bgInput.value = a;
+      render();
+    });
+
+    // initial render
+    render();
+  </script>
+</body>
+
+</html>
