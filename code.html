@@ -8,44 +8,57 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
     integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
   <link rel="icon" href="https://fav.farm/🎨">
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XR9HFSYX4R"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+
+    gtag('config', 'G-XR9HFSYX4R');
+  </script>
+
 </head>
 
-<body><h1>CS Courses as hex colors</h1>
-<p>This version encodes the semester following some internal JMU standard whose documentation
-  I cannot find where the semester is represented as a 4-digit integer in base 10 with:
-</p>
-<ol>
-  <li>
-    the current millennium is <code>0</code> for <code>1900</code> and <code>1</code> for <code>2000</code>
-  </li>
-  <li>the semester's year's last 2 digits are the middle two digits</li>
-  <li>the last digit is the 1-based index of that semester's starting month, e.g. Fall semester starts in august which
-    is month 8</li>
-</ol>
-<p>
-  For example, Fall 2025 semester is <code>1258</code>:
-</p>
-<dl>
-  <dt>
-    1
-  </dt>
-  <dd>Fall 2025 is not in the 1900s, but in the 2000s</dd>
-  <dt>
-    25
-  </dt>
-  <dd>semester's year's last 2 digits</dd>
-  <dt>
-    8
-  </dt>
-  <dd>Fall 2025 starts in August, month 8</dd>
-</dl>
-<h2>Caveat</h2>
-<p>The only issue is that course code has too many digits, so we drop the leading digit representing the millennium
-  (<code>Fall 2025</code> is then <code>258</code>).</p>
+<body>
+  <h1>CS Courses as hex colors</h1>
+  <p>This version encodes the semester following some internal JMU standard whose documentation
+    I cannot find where the semester is represented as a 4-digit integer in base 10 with:
+  </p>
+  <ol>
+    <li>
+      the current millennium is <code>0</code> for <code>1900</code> and <code>1</code> for <code>2000</code>
+    </li>
+    <li>the semester's year's last 2 digits are the middle two digits</li>
+    <li>the last digit is the 1-based index of that semester's starting month, e.g. Fall semester starts in august which
+      is month 8</li>
+  </ol>
+  <p>
+    For example, Fall 2025 semester is <code>1258</code>:
+  </p>
+  <dl>
+    <dt>
+      1
+    </dt>
+    <dd>Fall 2025 is not in the 1900s, but in the 2000s</dd>
+    <dt>
+      25
+    </dt>
+    <dd>semester's year's last 2 digits</dd>
+    <dt>
+      8
+    </dt>
+    <dd>Fall 2025 starts in August, month 8</dd>
+  </dl>
+  <h2>Caveat</h2>
+  <p>The only issue is that course code has too many digits, so we drop the leading digit representing the millennium
+    (<code>Fall 2025</code> is then <code>258</code>).</p>
   <main class="table-responsive">
     <table class="table" id="colors">
       <thead>
-        <tr id="courses"><th scope="col">sem</th></tr>
+        <tr id="courses">
+          <th scope="col">sem</th>
+        </tr>
       </thead>
       <tbody>
 
